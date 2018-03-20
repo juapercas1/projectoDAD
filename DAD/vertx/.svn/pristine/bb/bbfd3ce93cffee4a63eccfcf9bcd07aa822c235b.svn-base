@@ -1,0 +1,128 @@
+package vertx;
+
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+public class RegFechas {
+
+	private int id;
+	private String idSendor;
+	private String tipoSensor;
+	private String valor;
+	private String fecha;
+	private static int contador; // Se utiliza para el autoincremento.
+
+	//Constructor sin parámetros
+	public RegFechas() {
+	}
+
+	// Constructor con parámetros
+	@JsonCreator
+	public RegFechas(@JsonProperty("idSensor") String idSendor, @JsonProperty("tipoSensor") String tipoSensor,
+			@JsonProperty("valor") String valor) {
+		super();
+		contador++;
+		this.id = contador;
+		this.idSendor = idSendor;
+		this.tipoSensor = tipoSensor;
+		this.valor = valor;
+		//Fecha actual
+		Date fechaActual = new Date();
+		//Formateando la fecha:
+        DateFormat formatoHora = new SimpleDateFormat("HH:mm:ss");
+        DateFormat formatoFecha = new SimpleDateFormat("dd/MM/yyyy");
+        String fechaFormateada = formatoFecha.format(fechaActual) +"-"+ formatoHora.format(fechaActual);
+		this.fecha = fechaFormateada;
+	}
+
+	// Guetters and Setters
+	public Integer getId() {
+		return id;
+	}
+
+	public String getIdSendor() {
+		return idSendor;
+	}
+
+	public void setIdSendor(String idSendor) {
+		this.idSendor = idSendor;
+	}
+
+	public String getTipoSensor() {
+		return tipoSensor;
+	}
+
+	public void setTipoSensor(String tipoSensor) {
+		this.tipoSensor = tipoSensor;
+	}
+
+	public String getValor() {
+		return valor;
+	}
+
+	public void setValor(String valor) {
+		this.valor = valor;
+	}
+
+	public String getFecha() {
+		return fecha;
+	}
+
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((fecha == null) ? 0 : fecha.hashCode());
+		result = prime * result + id;
+		result = prime * result + ((idSendor == null) ? 0 : idSendor.hashCode());
+		result = prime * result + ((tipoSensor == null) ? 0 : tipoSensor.hashCode());
+		result = prime * result + ((valor == null) ? 0 : valor.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		RegFechas other = (RegFechas) obj;
+		if (fecha == null) {
+			if (other.fecha != null)
+				return false;
+		} else if (!fecha.equals(other.fecha))
+			return false;
+		if (id != other.id)
+			return false;
+		if (idSendor == null) {
+			if (other.idSendor != null)
+				return false;
+		} else if (!idSendor.equals(other.idSendor))
+			return false;
+		if (tipoSensor == null) {
+			if (other.tipoSensor != null)
+				return false;
+		} else if (!tipoSensor.equals(other.tipoSensor))
+			return false;
+		if (valor == null) {
+			if (other.valor != null)
+				return false;
+		} else if (!valor.equals(other.valor))
+			return false;
+		return true;
+	}
+
+	@Override
+	public String toString() {
+		return "RegFechas [id=" + id + ", idSendor=" + idSendor + ", tipoSensor=" + tipoSensor + ", valor=" + valor
+				+ ", fecha=" + fecha + "]";
+	}
+
+}

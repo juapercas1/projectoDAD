@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<qualifiedTypeNameHistroy>
+<fullyQualifiedTypeName name="io.vertx.core.Handler"/>
+<fullyQualifiedTypeName name="io.vertx.core.AbstractVerticle"/>
+<fullyQualifiedTypeName name="io.vertx.core.json.Json"/>
+<fullyQualifiedTypeName name="io.vertx.core.json.JsonObject"/>
+<fullyQualifiedTypeName name="java.util.Map"/>
+</qualifiedTypeNameHistroy>

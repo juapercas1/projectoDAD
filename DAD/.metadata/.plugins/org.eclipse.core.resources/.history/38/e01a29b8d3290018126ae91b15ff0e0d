@@ -1,0 +1,111 @@
+package vertx;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Future;
+import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.asyncsql.MySQLClient;
+import io.vertx.ext.sql.SQLClient;
+import io.vertx.ext.sql.SQLConnection;
+import io.vertx.ext.web.Router;
+import io.vertx.ext.web.RoutingContext;
+import io.vertx.ext.web.handler.BodyHandler;
+
+public class RestEP extends AbstractVerticle {
+
+	//Prueba para la conexión al SQL.
+	private Map<Integer, Sensores> database;
+	
+	private SQLClient mySQLClient;
+	
+	public void start(Future<Void> startFuture) {
+		database = new HashMap<>();
+		
+		JsonObject mySQLClientConfig = new JsonObject()
+				.put("host", "127.0.0.1")
+				.put("port", 3306)
+				.put("database", "tolmet")
+				.put("username", "root")
+				.put("password", "root");
+		
+		mySQLClient = MySQLClient.createShared
+				(vertx, mySQLClientConfig);
+
+		Router router = Router.router(vertx);
+
+		vertx.createHttpServer().requestHandler(router::accept).listen(8083, res -> {
+			if (res.succeeded()) {
+				System.out.println("Servidor REST desplegado");
+			} else {
+				System.out.println("Error: " + res.cause());
+			}
+		});
+
+		router.route("/api/elements").handler(BodyHandler.create());
+		router.get("/api/elements").handler(this::getAll);
+		router.get("/api/elements/:idFilter").handler(this::getOne);
+		router.put("/api/elements").handler(this::putElement);
+		database.put(1, new Sensores(1, "ST1", "TEMP", "SENSOR DE TEMP EN TERRAZA"));
+		database.put(2, new Sensores(2, "SH1", "HUM", "usuario@us.es"));
+		database.put(3, new Sensores(3, "ST2", "TEMP", "usuario3"));
+	}
+
+	private void getOne(RoutingContext routingContext) {
+		String paramStr = routingContext.request().getParam("idFilter");
+		if (paramStr != null) {
+			try {
+				int param = Integer.parseInt(paramStr);
+				
+				mySQLClient.getConnection(conn -> {
+					if (conn.succeeded()) {
+						SQLConnection connection = conn.result();
+						String query = "SELECT idCodigo, tipoSensor, descripcion "
+								+ "FROM sensores "
+								+ "WHERE idCodigo = ?";
+						JsonArray paramQuery = new JsonArray()
+								.add(param);
+						connection.queryWithParams(
+								query, 
+								paramQuery, 
+								res -> {
+									if (res.succeeded()) {
+										routingContext.response().end(Json.encodePrettily(res.result().getRows()));
+									}else {
+										routingContext.response().setStatusCode(400).end(
+												"Error: " + res.cause());	
+									}
+								});
+					}else {
+						routingContext.response().setStatusCode(400).end(
+								"Error: " + conn.cause());
+					}
+				});
+				
+				
+				
+				//routingContext.response().setStatusCode(200).
+				//	end(Json.encodePrettily(database.get(param)));
+			}catch (ClassCastException e) {
+				routingContext.response().setStatusCode(400).end();
+			}
+		}else {
+			routingContext.response().setStatusCode(400).end();
+		}
+	}
+
+	private void getAll(RoutingContext routingContext) {
+		routingContext.response().putHeader("content-type", "application/json; charset=utf-8")
+				.end(Json.encode(database.values()));
+	}
+
+	private void putElement(RoutingContext routingContext) {
+		Sensores state = Json.decodeValue(routingContext.getBodyAsString(), Sensores.class);
+		database.put(state.getId(), state);
+		routingContext.response().setStatusCode(201).end(Json.encode(state));
+	}
+
+}

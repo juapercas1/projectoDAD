@@ -1,0 +1,131 @@
+package vertx;
+
+import java.util.Date;
+
+public class RegFechas {
+
+	private Integer id;
+	private String idSendor;
+	private String tipoSensor;
+	private String valor;
+	private Date fecha;
+
+	//Constructor sin parámetros
+	public RegFechas() {
+		this(0,"","","",new Date());
+	}
+	
+	//Constructor con parámetros
+	public RegFechas(Integer id, String idSendor, String tipoSensor, String valor, Date fecha) {
+		super();
+		this.id = id;
+		this.idSendor = idSendor;
+		this.tipoSensor = tipoSensor;
+		this.valor = valor;
+		this.fecha = fecha;
+	}
+	
+
+
+	//Guetters and Setters
+	public Integer getId() {
+		return id;
+	}
+
+	public void setId(Integer id) {
+		this.id = id;
+	}
+
+	public String getIdSendor() {
+		return idSendor;
+	}
+
+	public void setIdSendor(String idSendor) {
+		this.idSendor = idSendor;
+	}
+
+	public String getTipoSensor() {
+		return tipoSensor;
+	}
+
+	public void setTipoSensor(String tipoSensor) {
+		this.tipoSensor = tipoSensor;
+	}
+
+	public String getValor() {
+		return valor;
+	}
+
+	public void setValor(String valor) {
+		this.valor = valor;
+	}
+
+	public Date getFecha() {
+		return fecha;
+	}
+
+	public void setFecha(Date fecha) {
+		this.fecha = fecha;
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((fecha == null) ? 0 : fecha.hashCode());
+		result = prime * result + ((id == null) ? 0 : id.hashCode());
+		result = prime * result + ((idSendor == null) ? 0 : idSendor.hashCode());
+		result = prime * result + ((tipoSensor == null) ? 0 : tipoSensor.hashCode());
+		result = prime * result + ((valor == null) ? 0 : valor.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		RegFechas other = (RegFechas) obj;
+		if (fecha == null) {
+			if (other.fecha != null)
+				return false;
+		} else if (!fecha.equals(other.fecha))
+			return false;
+		if (id == null) {
+			if (other.id != null)
+				return false;
+		} else if (!id.equals(other.id))
+			return false;
+		if (idSendor == null) {
+			if (other.idSendor != null)
+				return false;
+		} else if (!idSendor.equals(other.idSendor))
+			return false;
+		if (tipoSensor == null) {
+			if (other.tipoSensor != null)
+				return false;
+		} else if (!tipoSensor.equals(other.tipoSensor))
+			return false;
+		if (valor == null) {
+			if (other.valor != null)
+				return false;
+		} else if (!valor.equals(other.valor))
+			return false;
+		return true;
+	}
+
+	@Override
+	public String toString() {
+		return "RegFechas [id=" + id + ", idSendor=" + idSendor + ", tipoSensor=" + tipoSensor + ", valor=" + valor
+				+ ", fecha=" + fecha + "]";
+	}
+
+	
+
+	
+	
+
+}
