@@ -1,0 +1,35 @@
+package vertx;
+
+public class ModWifi {
+	private String idWifi;
+	private String descripcion;
+	
+	
+	public ModWifi() {
+		this("","");
+	}
+	
+	public ModWifi(String idWifi, String descripcion) {
+		super();
+		this.idWifi = idWifi;
+		this.descripcion = descripcion;
+	}
+
+	public String getIdWifi() {
+		return idWifi;
+	}
+
+	public void setIdWifi(String idWifi) {
+		this.idWifi = idWifi;
+	}
+
+	public String getDescripcion() {
+		return descripcion;
+	}
+
+	public void setDescripcion(String descripcion) {
+		this.descripcion = descripcion;
+	}
+	
+	
+}

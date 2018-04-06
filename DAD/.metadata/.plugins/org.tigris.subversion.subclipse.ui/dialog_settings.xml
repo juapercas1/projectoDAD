@@ -3,7 +3,7 @@
 	<item value="0" key="passwordStores.location.y"/>
 	<item value="0" key="CommitDialog.location.y"/>
 	<item value="0" key="passwordStores.location.x"/>
-	<item value="-305" key="CommitDialog.location.x"/>
+	<item value="0" key="CommitDialog.location.x"/>
 	<item value="500" key="CommitDialog.weights.0"/>
 	<item value="500" key="CommitDialog.weights.1"/>
 	<item value="0" key="UpdateDialogWithConflictHandling.location.y"/>

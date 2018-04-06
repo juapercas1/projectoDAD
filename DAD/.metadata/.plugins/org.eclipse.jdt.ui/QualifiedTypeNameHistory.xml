@@ -1,8 +1,21 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <qualifiedTypeNameHistroy>
-<fullyQualifiedTypeName name="io.vertx.core.Handler"/>
 <fullyQualifiedTypeName name="io.vertx.core.AbstractVerticle"/>
 <fullyQualifiedTypeName name="io.vertx.core.json.Json"/>
 <fullyQualifiedTypeName name="io.vertx.core.json.JsonObject"/>
 <fullyQualifiedTypeName name="java.util.Map"/>
+<fullyQualifiedTypeName name="io.vertx.reactivex.mqtt.MqttServer"/>
+<fullyQualifiedTypeName name="io.vertx.mqtt.MqttServer"/>
+<fullyQualifiedTypeName name="io.vertx.mqtt.MqttEndpoint"/>
+<fullyQualifiedTypeName name="io.vertx.core.Handler"/>
+<fullyQualifiedTypeName name="java.awt.List"/>
+<fullyQualifiedTypeName name="scala.collection.immutable.List"/>
+<fullyQualifiedTypeName name="java.util.ArrayList"/>
+<fullyQualifiedTypeName name="java.util.List"/>
+<fullyQualifiedTypeName name="io.netty.handler.codec.mqtt.MqttQoS"/>
+<fullyQualifiedTypeName name="io.vertx.mqtt.MqttTopicSubscription"/>
+<fullyQualifiedTypeName name="io.vertx.reactivex.mqtt.MqttClient"/>
+<fullyQualifiedTypeName name="io.vertx.mqtt.MqttClientOptions"/>
+<fullyQualifiedTypeName name="io.vertx.mqtt.MqttClient"/>
+<fullyQualifiedTypeName name="io.vertx.core.buffer.Buffer"/>
 </qualifiedTypeNameHistroy>

@@ -1,10 +1,14 @@
 package vertx;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.asyncsql.MySQLClient;
@@ -12,6 +16,12 @@ import io.vertx.ext.sql.SQLClient;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
+import io.vertx.mqtt.MqttClient;
+import io.vertx.mqtt.MqttClientOptions;
+import io.vertx.mqtt.MqttEndpoint;
+import io.vertx.mqtt.MqttServer;
+import io.vertx.mqtt.MqttTopicSubscription;
+import io.netty.handler.codec.mqtt.MqttQoS;
 
 public class RestEP extends AbstractVerticle {
 
@@ -19,6 +29,8 @@ public class RestEP extends AbstractVerticle {
 	private Map<Integer, Usuario> databaseUsuario = new HashMap<>();
 	private Map<String, Sensores> databaseSensores = new HashMap<>();
 	private Map<Integer, RegFechas> databaseFechas = new HashMap<>();
+	private Map<String, ModWifi> databaseWifi = new HashMap<>();
+	private Map<String, Elementos> databaseElementos = new HashMap<>();
 
 	private SQLClient mySQLClient;
 
@@ -54,13 +66,102 @@ public class RestEP extends AbstractVerticle {
 		router.put("/api/sensores").handler(this::putElementSensores);
 		router.delete("/api/sensores/:idDelete").handler(this::deleteElementSensores);
 
-		// Handlers para cada operación CRUD de sensores.
+		// Handlers para cada operación CRUD de fechas.
 		router.route("/api/fechas").handler(BodyHandler.create());
 		router.get("/api/fechas").handler(this::getAllFechas);
 		router.get("/api/fechas/:idFilter").handler(this::getOneFecha);
 		router.put("/api/fechas").handler(this::putElementFechas);
 		router.delete("/api/fechas/:idDelete").handler(this::deleteElementFechas);
 
+		// Handlers para cada operación CRUD de ModWifi.
+		router.route("/api/wifi").handler(BodyHandler.create());
+		router.get("/api/wifi").handler(this::getAllMods);
+		router.get("/api/wifi/:idFilter").handler(this::getOneMod);
+		router.put("/api/wifi").handler(this::putElementMod);
+		router.delete("/api/wifi/:idDelete").handler(this::deleteElementMod);
+
+		// Handlers para cada operación CRUD de Elementos.
+		router.route("/api/elementos").handler(BodyHandler.create());
+		router.get("/api/elementos").handler(this::getAllElem);
+		router.get("/api/elementos/:idFilter").handler(this::getOneElem);
+		router.put("/api/elementos").handler(this::putElem);
+		router.delete("/api/elementos/:idDelete").handler(this::deleteElem);
+
+		MqttServer mqttServer = MqttServer.create(vertx);
+		initialize(mqttServer);
+		MqttClient mqttClient = MqttClient.create(vertx,
+				new MqttClientOptions().setAutoKeepAlive(true));
+		mqttClient.connect(8123, "localhost", handler -> {
+			mqttClient.subscribe("topic_1", MqttQoS.AT_LEAST_ONCE.value(), msg -> {
+				System.out.println("Mensaje recibido: " + msg.toString());
+			});
+			
+			mqttClient.publish("topic_1", Buffer.buffer("Mi primer mensaje"), MqttQoS.AT_LEAST_ONCE, false, false);			
+		});
+		
+	}
+
+	public void initialize(MqttServer mqttServer) {
+		mqttServer.endpointHandler(new Handler<MqttEndpoint>() {
+			
+			public void handle(MqttEndpoint endpoint) {
+				endpoint.accept(false);
+				handleSubscription(endpoint);
+				handleUnsubscription(endpoint);
+				handlePublish(endpoint);
+				handleClientDisconnected(endpoint);
+			}
+			
+		}).listen(8123, handler -> {
+			if(handler.succeeded()) {
+				System.out.println("Servidor MQTT desplegado");
+			}
+			else {
+				System.out.println("Error: " + handler.cause());
+			}
+		});
+	}
+	
+	protected void handleSubscription(MqttEndpoint endpoint) {
+		endpoint.subscribeHandler(subscribe -> {
+			List<MqttQoS> grantedQoS = new ArrayList<MqttQoS>();
+			for(MqttTopicSubscription s: subscribe.topicSubscriptions()) {
+					System.out.println("Suscripción al topic: " + s.topicName());
+					grantedQoS.add(s.qualityOfService());
+			}
+			endpoint.subscribeAcknowledge(subscribe.messageId(), grantedQoS);
+		});
+		
+	}
+	
+
+	protected void handleUnsubscription(MqttEndpoint endpoint) {
+		endpoint.unsubscribeHandler(unsuscribe -> {
+			for (String topic: unsuscribe.topics()) {
+				System.out.println("El cliente " + endpoint.clientIdentifier() 
+				+ " ha eliminado la suscripción al canal " + topic);
+			}
+			endpoint.unsubscribeAcknowledge(unsuscribe.messageId());
+		});
+		
+	}
+
+	protected void handlePublish(MqttEndpoint endpoint) {
+		endpoint.publishHandler(message -> {
+			System.out.println("Topic: " + message.topicName() + 
+					". Contenido: " + message.payload().toString());
+			if(message.qosLevel() == MqttQoS.EXACTLY_ONCE) {
+				endpoint.publishRelease(message.messageId());
+				}
+		});
+		
+	}
+	
+	protected void handleClientDisconnected(MqttEndpoint endpoint) {
+		endpoint.disconnectHandler(disconnect -> {
+			
+		});
+		
 	}
 
 	// Operaciones CRUD de usuarios.
@@ -118,8 +219,7 @@ public class RestEP extends AbstractVerticle {
 				Usuario user = databaseUsuario.get(param);
 				databaseUsuario.remove(param);
 				routingContext.response().setStatusCode(200)
-						.putHeader("content-type", "application/json; charset=utf-8")
-						.end(Json.encodePrettily(user));
+						.putHeader("content-type", "application/json; charset=utf-8").end(Json.encodePrettily(user));
 			} catch (ClassCastException e) {
 				routingContext.response().setStatusCode(400).end();
 			}
@@ -180,8 +280,7 @@ public class RestEP extends AbstractVerticle {
 				Sensores sensor = databaseSensores.get(paramStr);
 				databaseSensores.remove(paramStr);
 				routingContext.response().setStatusCode(200)
-						.putHeader("content-type", "application/json; charset=utf-8")
-						.end(Json.encodePrettily(sensor));
+						.putHeader("content-type", "application/json; charset=utf-8").end(Json.encodePrettily(sensor));
 			} catch (ClassCastException e) {
 				routingContext.response().setStatusCode(400).end();
 			}
@@ -244,10 +343,9 @@ public class RestEP extends AbstractVerticle {
 			try {
 				int param = Integer.parseInt(paramStr);
 				RegFechas fecha = databaseFechas.get(param);
-				databaseUsuario.remove(param);
+				databaseFechas.remove(param);
 				routingContext.response().setStatusCode(200)
-						.putHeader("content-type", "application/json; charset=utf-8")
-						.end(Json.encodePrettily(fecha));
+						.putHeader("content-type", "application/json; charset=utf-8").end(Json.encodePrettily(fecha));
 			} catch (ClassCastException e) {
 				routingContext.response().setStatusCode(400).end();
 			}
@@ -255,6 +353,129 @@ public class RestEP extends AbstractVerticle {
 			routingContext.response().setStatusCode(400).end();
 		}
 	}
+
+	// Operaciones CRUD de modWifi
+	private void getAllMods(RoutingContext routingContext) {
+		routingContext.response().putHeader("content-type", "application/json; charset=utf-8")
+				.end(Json.encode(databaseWifi.values()));
+	}
+
+	private void getOneMod(RoutingContext routingContext) {
+		String paramStr = routingContext.request().getParam("idFilter");
+		if (paramStr != null) {
+			try {
+				// mySQLClient.getConnection(conn -> {
+				// if (conn.succeeded()) {
+				// SQLConnection connection = conn.result();
+				// String query = "SELECT idSensor, tipoSensor, valor, fecha " +
+				// "FROM regFechas "
+				// + "WHERE id = ?";
+				// JsonArray paramQuery = new JsonArray().add(param);
+				// connection.queryWithParams(query, paramQuery, res -> {
+				// if (res.succeeded()) {
+				// routingContext.response().end(Json.encodePrettily(res.result().getRows()));
+				// } else {
+				// routingContext.response().setStatusCode(400).end("Error: " +
+				// res.cause());
+				// }
+				// });
+				// } else {
+				// routingContext.response().setStatusCode(400).end("Error: " +
+				// conn.cause());
+				// }
+				// });
+				routingContext.response().setStatusCode(200).end(Json.encodePrettily(databaseWifi.get(paramStr)));
+			} catch (ClassCastException e) {
+				routingContext.response().setStatusCode(400).end();
+			}
+		} else {
+			routingContext.response().setStatusCode(400).end();
+		}
+	}
+
+	private void putElementMod(RoutingContext routingContext) {
+		ModWifi state = Json.decodeValue(routingContext.getBodyAsString(), ModWifi.class);
+		databaseWifi.put(state.getIdWifi(), state);
+		routingContext.response().setStatusCode(201).end(Json.encode(state));
+	}
+
+	private void deleteElementMod(RoutingContext routingContext) {
+		String paramStr = routingContext.request().getParam("idDelete");
+		if (paramStr != null) {
+			try {
+				ModWifi wifi = databaseWifi.get(paramStr);
+				databaseWifi.remove(paramStr);
+				routingContext.response().setStatusCode(200)
+						.putHeader("content-type", "application/json; charset=utf-8").end(Json.encodePrettily(wifi));
+			} catch (ClassCastException e) {
+				routingContext.response().setStatusCode(400).end();
+			}
+		} else {
+			routingContext.response().setStatusCode(400).end();
+		}
+	}
+	
+	// Operaciones CRUD de elementos
+		private void getAllElem(RoutingContext routingContext) {
+			routingContext.response().putHeader("content-type", "application/json; charset=utf-8")
+					.end(Json.encode(databaseElementos.values()));
+		}
+
+		private void getOneElem(RoutingContext routingContext) {
+			String paramStr = routingContext.request().getParam("idFilter");
+			if (paramStr != null) {
+				try {
+					// mySQLClient.getConnection(conn -> {
+					// if (conn.succeeded()) {
+					// SQLConnection connection = conn.result();
+					// String query = "SELECT idSensor, tipoSensor, valor, fecha " +
+					// "FROM regFechas "
+					// + "WHERE id = ?";
+					// JsonArray paramQuery = new JsonArray().add(param);
+					// connection.queryWithParams(query, paramQuery, res -> {
+					// if (res.succeeded()) {
+					// routingContext.response().end(Json.encodePrettily(res.result().getRows()));
+					// } else {
+					// routingContext.response().setStatusCode(400).end("Error: " +
+					// res.cause());
+					// }
+					// });
+					// } else {
+					// routingContext.response().setStatusCode(400).end("Error: " +
+					// conn.cause());
+					// }
+					// });
+
+					routingContext.response().setStatusCode(200).end(Json.encodePrettily(databaseElementos.get(paramStr)));
+				} catch (ClassCastException e) {
+					routingContext.response().setStatusCode(400).end();
+				}
+			} else {
+				routingContext.response().setStatusCode(400).end();
+			}
+		}
+
+		private void putElem(RoutingContext routingContext) {
+			Elementos state = Json.decodeValue(routingContext.getBodyAsString(), Elementos.class);
+			databaseElementos.put(state.getIdElemento(), state);
+			routingContext.response().setStatusCode(201).end(Json.encode(state));
+		}
+
+		private void deleteElem(RoutingContext routingContext) {
+			String paramStr = routingContext.request().getParam("idDelete");
+			if (paramStr != null) {
+				try {
+					Elementos elem = databaseElementos.get(paramStr);
+					databaseElementos.remove(paramStr);
+					routingContext.response().setStatusCode(200)
+							.putHeader("content-type", "application/json; charset=utf-8").end(Json.encodePrettily(elem));
+				} catch (ClassCastException e) {
+					routingContext.response().setStatusCode(400).end();
+				}
+			} else {
+				routingContext.response().setStatusCode(400).end();
+			}
+		}
 
 	// Método para crear algunos datos
 	private void createSomeData() {
@@ -266,8 +487,15 @@ public class RestEP extends AbstractVerticle {
 		Sensores sensor2 = new Sensores("SH1", "HUM", "Sensor patio");
 		databaseSensores.put(sensor1.getIdCodigo(), sensor1);
 		databaseSensores.put(sensor2.getIdCodigo(), sensor2);
-		RegFechas fecha1 = new RegFechas("ST1", "TEMP", "20,0");
+		RegFechas fecha1 = new RegFechas("ST1", "20,0");
 		databaseFechas.put(fecha1.getId(), fecha1);
+		
+		Elementos ele1 = new Elementos("TOLDO1", "WIFI1", true);
+		databaseElementos.put(ele1.getIdElemento(), ele1);
+		ModWifi wifi1 = new ModWifi("WIFI1", "Wifi del patio");
+		databaseWifi.put(wifi1.getIdWifi(), wifi1);
 	}
+	
+
 
 }
