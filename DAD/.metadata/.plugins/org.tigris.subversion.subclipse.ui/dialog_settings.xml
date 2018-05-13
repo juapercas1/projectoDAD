@@ -5,13 +5,17 @@
 	<item value="0" key="passwordStores.location.x"/>
 	<item value="0" key="CommitDialog.location.x"/>
 	<item value="500" key="CommitDialog.weights.0"/>
+	<item value="421" key="RevertDialog.location.x"/>
 	<item value="500" key="CommitDialog.weights.1"/>
 	<item value="0" key="UpdateDialogWithConflictHandling.location.y"/>
 	<item value="727" key="UpdateDialogWithConflictHandling.size.y"/>
+	<item value="108" key="RevertDialog.location.y"/>
 	<item value="" key="DirectorySelectionPage.lastParent_https://repositorio.informatica.us.es/svn/cmvthqvtmgjwkagwyj7"/>
 	<item value="728" key="CommitDialog.size.y"/>
 	<item value="525" key="UpdateDialogWithConflictHandling.size.x"/>
 	<item value="1288" key="CommitDialog.size.x"/>
+	<item value="385" key="RevertDialog.size.y"/>
+	<item value="525" key="RevertDialog.size.x"/>
 	<item value="586" key="passwordStores.size.y"/>
 	<item value="1366" key="passwordStores.size.x"/>
 	<item value="421" key="UpdateDialogWithConflictHandling.location.x"/>
