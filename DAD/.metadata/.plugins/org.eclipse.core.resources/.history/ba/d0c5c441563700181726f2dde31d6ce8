@@ -1,6 +1,0 @@
-package vertx;
-
-public class ModWifi {
-	private String idWifi;
-	private String descripcion;
-}

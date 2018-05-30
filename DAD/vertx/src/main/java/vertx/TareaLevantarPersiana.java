@@ -6,7 +6,9 @@ import org.quartz.JobExecutionException;
 
 public class TareaLevantarPersiana implements Job {
 
+	
 	public void execute(JobExecutionContext jobExecutionContext) throws JobExecutionException {
-		RestEP.abrirPersianaLuminosidad("PERSIANA1");
+		String elemento = RestEP.elementoAutomatico();
+		RestEP.abrirPersianaLuminosidad(elemento);
 	}
 }

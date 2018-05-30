@@ -28,6 +28,7 @@ import io.vertx.ext.sql.SQLConnection;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
+import io.vertx.ext.web.handler.StaticHandler;
 import io.vertx.mqtt.MqttClient;
 import io.vertx.mqtt.MqttClientOptions;
 import io.vertx.mqtt.MqttEndpoint;
@@ -40,6 +41,9 @@ public class RestEP extends AbstractVerticle {
 	private static SQLClient mySQLClient;
 	private static MqttClient mqttClient;
 	private static Multimap<String, MqttEndpoint> clientTopics;
+	private static String elementoAutomatico;
+	private static String horaElementoAutomatico;
+	private static List<JobDetail> jobs = new ArrayList<>();
 
 	public void start(Future<Void> startFuture) {
 		// Publicación de mensajes en el topic.
@@ -51,6 +55,10 @@ public class RestEP extends AbstractVerticle {
 
 		// Inicializamos el Verticle. Lanzando el servidor HTTP
 		Router router = Router.router(vertx);
+
+		// Para crear el index.html
+		router.route("/inicio/*").handler(StaticHandler.create("inicio"));
+
 		vertx.createHttpServer().requestHandler(router::accept).listen(8083, res -> {
 			if (res.succeeded()) {
 				System.out.println("Servidor REST desplegado");
@@ -114,34 +122,24 @@ public class RestEP extends AbstractVerticle {
 		ScheduledExecutorService timer = Executors.newSingleThreadScheduledExecutor();
 		timer.scheduleAtFixedRate(tarea, 1, 8, TimeUnit.HOURS);
 
-		// TODO de momento solo actua con PERSIANA1
-		// Levantamiento de persianas automático, a las 7:00
-		JobDetail job = JobBuilder.newJob(TareaLevantarPersiana.class).withIdentity("abrirPersianas").build();
-
-		CronTrigger trigger = TriggerBuilder.newTrigger()
-				.withSchedule(CronScheduleBuilder.cronSchedule("0 14 17 * * ?")).build();
-
-		SchedulerFactory schedFact = new org.quartz.impl.StdSchedulerFactory();
-		org.quartz.Scheduler sched = null;
-		try {
-			sched = schedFact.getScheduler();
-			sched.start();
-			sched.scheduleJob(job, trigger);
-		} catch (SchedulerException e1) {
-			e1.printStackTrace();
-		}
-
 		// Handlers para cada operación CRUD abrir/cerrar persianas.
 		router.route("/api/abrirPersianas").handler(BodyHandler.create());
 		router.get("/api/abrirPersianas/abrirPersiana/:idMensaje").handler(this::abrirPersiana);
 		router.route("/api/cerrarPersianas").handler(BodyHandler.create());
 		router.get("/api/cerrarPersianas/cerrarPersiana/:idMensaje").handler(this::cerrarPersiana);
-		
+
 		// Handlers para cada operación CRUD desplegar/recoger toldos.
 		router.route("/api/desplegarToldos").handler(BodyHandler.create());
 		router.get("/api/desplegarToldos/desplegarToldo/:idMensaje").handler(this::desplegarToldo);
 		router.route("/api/recogerToldos").handler(BodyHandler.create());
 		router.get("/api/recogerToldos/recogerToldo/:idMensaje").handler(this::recogerToldo);
+
+		// Handlers para cada operación CRUD obtencion de datos
+		router.route("/api/obtenerDatos").handler(BodyHandler.create());
+		router.put("/api/obtenerDatos").handler(this::obtenerDatos);
+		// Handlers para cada operación CRUD obtencion de datos
+		router.route("/api/automatico").handler(BodyHandler.create());
+		router.put("/api/automatico").handler(this::putElemento);
 
 		// Handlers para cada operación CRUD de usuarios.
 		router.route("/api/usuarios").handler(BodyHandler.create());
@@ -180,12 +178,107 @@ public class RestEP extends AbstractVerticle {
 		router.get("/api/elementos/estado/:idFilter").handler(this::getState);
 		router.route("/api/elementos/updateEstado").handler(BodyHandler.create());
 		router.put("/api/elementos/updateEstado").handler(this::updateState);
-
 	}
 
 	/********************************************************************************************
 	 * APLICACIÓN * *
 	 *******************************************************************************************/
+	/**
+	 * Indica el elemento seleecionado, y la hora para abrir las persianas
+	 * automaticamente
+	 * 
+	 * @param routingContext
+	 */
+	private void putElemento(RoutingContext routingContext) {
+		JsonObject j = routingContext.getBodyAsJson();
+		elementoAutomatico = j.getString("elemento");
+		horaElementoAutomatico = j.getString("hora");
+		levantamientoAutomatico(elementoAutomatico, horaElementoAutomatico);
+	}
+
+	public static String elementoAutomatico() {
+		return elementoAutomatico;
+	}
+
+	private void levantamientoAutomatico(String elemento, String hora) {
+		String horaFinal = "";
+		if (!elemento.isEmpty()) {
+			if (!hora.isEmpty()) {
+				String[] lista = hora.split(":");
+				horaFinal = "0 " + lista[1] + " " + lista[0] + " * * ?";
+			} else { horaFinal = "0 0 0 * * ?";	}
+			JobDetail job = null;
+			if (jobs.isEmpty()) {
+				job = JobBuilder.newJob(TareaLevantarPersiana.class).withDescription(elemento).build();
+				jobs.add(job);
+			} else { for (JobDetail j : jobs) {
+					 if (j.getDescription().equals(elemento)) {
+						job = j;
+						break;
+				    	} else {
+					    	job = JobBuilder.newJob(TareaLevantarPersiana.class).withDescription(elemento).build();
+						    jobs.add(job);
+						    break;
+					    }
+				    }
+			   }
+			CronTrigger trigger = TriggerBuilder.newTrigger().withSchedule
+					(CronScheduleBuilder.cronSchedule(horaFinal)).build();
+			SchedulerFactory schedFact = new org.quartz.impl.StdSchedulerFactory();
+			org.quartz.Scheduler sched = null;
+			try {
+				sched = schedFact.getScheduler();
+				sched.start();
+				sched.deleteJob(job.getKey());
+				sched.scheduleJob(job, trigger);
+				if (hora.isEmpty()) {
+					sched.pauseJob(job.getKey());
+				}
+			} catch (SchedulerException e1) {
+				e1.printStackTrace();
+			}
+		}
+	}
+
+	/**
+	 * Obtener datos de un sensor específico.
+	 * 
+	 * @param routingContext
+	 */
+	private void obtenerDatos(RoutingContext routingContext) {
+		JsonObject j = routingContext.getBodyAsJson();
+		if (!j.getString("sensor").isEmpty() && !j.getString("fDesde").isEmpty() && !j.getString("fHasta").isEmpty()) {
+			String fechaDesde = parseoFecha(j.getString("fDesde"));
+			String fechaHasta = parseoFecha(j.getString("fHasta"));
+			mySQLClient.getConnection(conn -> {
+				if (conn.succeeded()) {
+					SQLConnection connection = conn.result();
+					String query = "SELECT valor, fecha FROM regfechas " + "WHERE idSensor = '" + j.getString("sensor")
+							+ "' AND fecha BETWEEN '" + fechaDesde + "' AND '" + fechaHasta + "'";
+					connection.query(query, res -> {
+						if (res.succeeded()) {
+							routingContext.response().end(Json.encodePrettily(res.result().getRows()));
+						} else {
+							routingContext.response().setStatusCode(400).end("Error: " + res.cause());
+						}
+					});
+				} else {
+					routingContext.response().setStatusCode(400).end("Error: " + conn.cause());
+				}
+			});
+		} else {
+			routingContext.response().setStatusCode(400).end("Error");
+		}
+	}
+
+	private String parseoFecha(String fecha) {
+		String res = "";
+		String[] lista = fecha.split("-");
+		res += lista[2] + "/";
+		res += lista[1] + "/";
+		res += lista[0] + "*";
+		return res;
+	}
 
 	/**
 	 * Indicamos nombre de persiana, y envía mensaje a nodeMCU específico.
@@ -257,8 +350,10 @@ public class RestEP extends AbstractVerticle {
 			routingContext.response().end("Error3");
 		}
 	}
+
 	/**
 	 * Uso automático de levantamiento de persiana.
+	 * 
 	 * @param paramStr
 	 */
 	public static void abrirPersianaLuminosidad(String paramStr) {
@@ -286,7 +381,7 @@ public class RestEP extends AbstractVerticle {
 
 		}
 	}
-	
+
 	/**
 	 * Indicamos nombre de toldo, y envía mensaje a nodeMCU específico.
 	 * 
@@ -305,8 +400,8 @@ public class RestEP extends AbstractVerticle {
 							if (res.succeeded()) {
 								JsonObject objeto = res.result().getRows().get(0);
 								String nodeMCU = "in" + objeto.getValue("idWifiElem").toString();
-								mqttClient.publish(nodeMCU, Buffer.buffer("recogerToldo"), MqttQoS.AT_LEAST_ONCE,
-										false, false);
+								mqttClient.publish(nodeMCU, Buffer.buffer("recogerToldo"), MqttQoS.AT_LEAST_ONCE, false,
+										false);
 								routingContext.response().end("Mensaje, recogerToldo enviado al topic = " + nodeMCU);
 							} else {
 								routingContext.response().end("Error");
@@ -918,6 +1013,7 @@ public class RestEP extends AbstractVerticle {
 
 	/**
 	 * Obtener el estado de toldo/persiana.
+	 * 
 	 * @param routingContext
 	 */
 	private void getState(RoutingContext routingContext) {
@@ -960,6 +1056,7 @@ public class RestEP extends AbstractVerticle {
 
 	/**
 	 * Modificar el estado de persiana/toldo
+	 * 
 	 * @param routingContext
 	 */
 	private void updateState(RoutingContext routingContext) {

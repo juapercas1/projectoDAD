@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+body {
+    margin: 0;
+}
+
+ul {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    width: 25%;
+    background-color: #f1f1f1;
+    position: fixed;
+    height: 100%;
+    overflow: auto;
+}
+
+li a {
+    display: block;
+    color: #000;
+    padding: 8px 16px;
+    text-decoration: none;
+}
+
+li a.active {
+    background-color: #4CAF50;
+    color: white;
+}
+
+li a:hover:not(.active) {
+    background-color: #555;
+    color: white;
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+th, td {
+    text-align: left;
+    padding: 8px;
+}
+
+tr:nth-child(even){background-color: #f2f2f2}
+
+th {
+    background-color: #4CAF50;
+    color: white;
+}
+</style>
+
+<script type="text/javascript" language="javascript">
+function loadElementos() {
+    var xhttp = new XMLHttpRequest();
+    xhttp.open("GET", "/api/elementos", true);
+    xhttp.setRequestHeader("Content-type", "application/json");
+    xhttp.send();
+    var response = JSON.parse(xhttp.responseText);
+    xhttp.onreadystatechange = function() {
+    if (this.readyState == 4 && this.status == 200) {
+      document.getElementById("demo").innerHTML = this.responseText;
+    }
+  };
+}
+</script>
+
+</head>
+<body>
+
+<ul>
+  <li><a class="active" href="#Inicio">Inicio</a></li>
+  <li><a href="#Configuracion">Configuración</a></li>
+</ul>
+
+<div style="margin-left:25%;padding:1px 16px;height:1000px;">
+	
+ 	<h1>Inicio</h1>
+	<h2>Elementos disponibles</h2>
+	<table id="tablaElementos"></table>
+	<h2> Valores de los sensores </h2>
+	
+	<b>Sensor: </b><select id="sensores"></select>
+	<b>F.Desde: </b> <input id="fechaDesde" type="date" name="fechaDesde">
+	<b>F.Hasta: </b> <input id="fechaHasta" type="date" name="fechaHasta">
+	<button type="button" onclick="cargarValores()">Obtener datos</button>
+	<br></br>
+	<table id="tablaDatos"></table>
+	
+	<h2> Levantamiento de persianas automático </h2>
+	<select id="automatico"></select>
+	<input id="hora" type="time" name="hora">
+	<button type="button" onclick="enviar()">Enviar</button>
+	
+<script>
+		//Elementos disponibles
+  	var table="<tr><th>Elemento</th><th>Estado</th><th></th></tr>";
+  	var automaticos = "<option value=''></option>";
+  	var xhttp = new XMLHttpRequest();
+  	var response;
+  	var cont = 0;
+  	xhttp.onreadystatechange = function() {
+  	  if (this.readyState == 4 && this.status == 200) {
+  	    response = JSON.parse(this.responseText);
+  	    for (x in response) {
+  	    	if(response[x].idElemento.indexOf("PERSIANA") != -1){
+  	    		automaticos += "<option value=''>" + response[x].idElemento +"</option>";
+  	    	}
+   	   		table += "<tr><td>" +
+  			response[x].idElemento +
+    		"</td><td>"+ response[x].estado +
+    		"</td><td> <button type='submit' onclick='cambiarEstado(" + cont + ")'>Cambiar estado</button>" + 
+    		"</td><tr>";
+    		cont = cont + 1;
+		  }
+		  document.getElementById("tablaElementos").innerHTML = table;
+		  document.getElementById("automatico").innerHTML = automaticos;
+    	}
+  	};
+  	xhttp.open("GET", "/api/elementos", true);
+  	xhttp.send();
+
+		function cargarValores(){
+		// Obtener la referencia a la lista
+		var lista = document.getElementById("sensores");
+		// Obtener el índice de la opción que se ha seleccionado
+		var indiceSeleccionado = lista.selectedIndex;
+		var opcionSeleccionada = lista.options[indiceSeleccionado];
+		var textoSeleccionado = opcionSeleccionada.text;
+		//Fecha desde
+		var fechaDesde = document.getElementById("fechaDesde").value;
+		//Fecha hasta
+		var fechaHasta = document.getElementById("fechaHasta").value;
+		var miObjeto = new Object();
+		miObjeto.sensor = textoSeleccionado;
+		miObjeto.fDesde = fechaDesde;
+		miObjeto.fHasta = fechaHasta;
+		var myString = JSON.stringify(miObjeto);
+		
+		var tableDatos="<tr><th>Valor</th><th>Fecha</th></tr>";
+		var xmlhttp_datos = new XMLHttpRequest();   // new HttpRequest instance 
+		xmlhttp_datos.onreadystatechange = function() {
+  	 	if (this.readyState == 4 && this.status == 200) {
+  	    	responseDatos = JSON.parse(this.responseText);
+  	   	 	for (x in responseDatos) {
+   	   			tableDatos += "<tr><td>" +
+  				responseDatos[x].valor +
+    			"</td><td>"+ responseDatos[x].fecha +
+    			"</td></tr>";
+		  	}
+		  	document.getElementById("tablaDatos").innerHTML = tableDatos;
+		  }
+  		};
+  		xmlhttp_datos.open("PUT", "/api/obtenerDatos", true);
+		xmlhttp_datos.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+		xmlhttp_datos.send(myString);
+	}
+
+	function enviar(){
+		var listaPersianas = document.getElementById("automatico");
+		var indiceSeleccionadoPersiana = listaPersianas.selectedIndex;
+		var opcionSeleccionadaPersiana = listaPersianas.options[indiceSeleccionadoPersiana];
+		var textoSeleccionadoPersiana = opcionSeleccionadaPersiana.text;
+		var hora = document.getElementById("hora").value;
+		var miObjeto1 = new Object();
+		miObjeto1.elemento = textoSeleccionadoPersiana;
+		miObjeto1.hora = hora;
+		var myString1 = JSON.stringify(miObjeto1);
+		
+		var xmlhttp_auto = new XMLHttpRequest();
+		xmlhttp_auto.open("PUT", "/api/automatico", true);
+		xmlhttp_auto.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+		xmlhttp_auto.send(myString1); 
+	}
+	  	
+  	//Sensores disponibles
+  	var response_1;
+  	var xhttp_1 = new XMLHttpRequest();
+  	var opciones = "<option value=''></option>";
+  	xhttp_1.onreadystatechange = function() {
+  		if (this.readyState == 4 && this.status == 200) {
+  	    	response_1 = JSON.parse(this.responseText);
+  	    	for (x in response_1) {
+  	    		//if(response_1[x].tipoSensor == "ST"){
+  	    			opciones += "<option value='" + response_1[x].idSensor + "'>" + response_1[x].idSensor + "</option>";
+  	    		//}
+  	    	}
+  	    	 document.getElementById("sensores").innerHTML = opciones;
+  	    }
+  	};
+  	xhttp_1.open("GET", "/api/sensores", true);
+  	xhttp_1.send();
+	
+	function cambiarEstado(cont){
+		var idElemento = response[cont].idElemento;
+		var estado = response[cont].estado;
+		var xhttp = new XMLHttpRequest();
+		var str = idElemento.substring(0, 8);
+		if(str == "PERSIANA"){
+			if(estado == "1"){
+				xhttp.open("GET", "/api/cerrarPersianas/cerrarPersiana/" + idElemento, true);
+			}else{
+				xhttp.open("GET",  "/api/abrirPersianas/abrirPersiana/" + idElemento, true);
+			}
+		}else{
+			if(estado == "1"){
+				xhttp.open("GET", "/api/recogerToldos/recogerToldo/" + idElemento, true);
+			}else{
+				xhttp.open("GET", "/api/desplegarToldos/desplegarToldo/" + idElemento, true);
+			}
+		}
+  		xhttp.send();
+  		//window.setInterval("reFresh()",5000);
+	}
+		
+	function reFresh() {
+	  	windows.location.reload();
+	}
+	
+
+  </script>
+	
+</body>
+</html>
